@@ -97,4 +97,4 @@ The monitor also automatically discovers your `maazdb.toml` server configuration
 Distributed under the MIT License. See `LICENSE` for more information.
 
 ## 🤝 Credits
-Powered by [maazdb-rs](https://github.com/yourusername/maazdb-rs).
+Powered by [maazdb-rs](https://github.com/42Wor).
