@@ -1,5 +1,5 @@
 use std::env;
-use std::process::Command;
+
 
 fn main() {
     // 1. Get version from Cargo.toml
@@ -18,7 +18,7 @@ fn main() {
     if target_os == "windows" {
         // This requires 'icon.rc' to exist in your root folder
         // and 'embed-resource' in [build-dependencies]
-        embed_resource::compile("icon.rc", embed_resource::NONE);
+        let _ = embed_resource::compile("icon.rc", embed_resource::NONE);
     }
 
     // Re-run if these files change
