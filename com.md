@@ -1,6 +1,12 @@
 cargo run --bin maazdb-server    
 
-cargo run --bin maazdb-cli
+Run this command to install it globally:
+
+```bash
+cargo install --path /run/media/maaz/S/project_maazdb/
+```
+
+Now you can just type **`maazdb-cli`** from any folder.
 
 cargo run --bin maazdb-cli monitor
 
