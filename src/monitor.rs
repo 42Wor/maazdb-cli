@@ -1,3 +1,4 @@
+// src/monitor.rs
 use std::io::{self, Write};
 use std::{fs, path::Path, path::PathBuf, env};
 use std::time::{Duration, Instant, SystemTime, UNIX_EPOCH};
@@ -180,18 +181,19 @@ fn get_dir_size(path: impl AsRef<Path>) -> u64 {
     size
 }
 
-fn get_server_config_content() -> Option<(String, PathBuf)> {
-    let mut paths = vec![
-        PathBuf::from("maazdb.toml"),
-        PathBuf::from("config.toml"),
-        PathBuf::from("maazdb.config"),
-        PathBuf::from("../maazdb.toml"),
-        PathBuf::from("../maazdb/maazdb.toml"),
-        PathBuf::from("../../maazdb/maazdb.toml"),
-        PathBuf::from("/run/media/maaz/S/project_maazdb/maazdb/maazdb.toml"),
-    ];
 
-    if let Ok(mut current_dir) = std::env::current_dir() {
+use directories::ProjectDirs;
+
+fn get_server_config_content() -> Option<(String, PathBuf)> {
+    let mut paths = Vec::new();
+
+    // 1. PRIORITY: Local Development Paths (Current Directory)
+    paths.push(PathBuf::from("maazdb.toml"));
+    paths.push(PathBuf::from("config.toml"));
+    paths.push(PathBuf::from("maazdb.config"));
+
+    // 2. PRIORITY: Parent Directory Traversal (Useful for monorepos/cargo workspaces)
+    if let Ok(mut current_dir) = env::current_dir() {
         for _ in 0..4 {
             paths.push(current_dir.join("maazdb.toml"));
             paths.push(current_dir.join("maazdb").join("maazdb.toml"));
@@ -199,6 +201,7 @@ fn get_server_config_content() -> Option<(String, PathBuf)> {
         }
     }
 
+    // 3. PRIORITY: Executable Directory (Portable Mode)
     if let Ok(exe_path) = env::current_exe() {
         if let Some(exe_dir) = exe_path.parent() {
             paths.push(exe_dir.join("maazdb.toml"));
@@ -206,12 +209,16 @@ fn get_server_config_content() -> Option<(String, PathBuf)> {
         }
     }
 
-    if let Some(mut p) = dirs::config_dir() {
-        p.push("maazdb");
+    // 4. PRIORITY: OS-Specific User Config (The "Standard" Path)
+    // This matches: ~/.config/maazdb/server/maazdb.toml
+    if let Some(proj_dirs) = ProjectDirs::from("com", "maazdb", "maazdb") {
+        let mut p = proj_dirs.config_dir().to_path_buf();
+        p.push("server");
         p.push("maazdb.toml");
         paths.push(p);
     }
 
+    // 5. PRIORITY: System-Wide Configuration
     #[cfg(unix)]
     paths.push(PathBuf::from("/etc/maazdb/maazdb.toml"));
 
@@ -220,14 +227,21 @@ fn get_server_config_content() -> Option<(String, PathBuf)> {
         paths.push(PathBuf::from(format!(r"{}\maazdb\maazdb.toml", pd)));
     }
 
+    // 6. FALLBACK: Hardcoded Dev Path (Optional - keep if you use this specific drive)
+    paths.push(PathBuf::from("/run/media/maaz/S/project_maazdb/maazdb/maazdb.toml"));
+
+    // Search and return the first one that exists and is readable
     for path in paths {
-        if let Ok(content) = fs::read_to_string(&path) {
-            return Some((content, path));
+        // Use metadata to check if it's a file to avoid trying to read directories
+        if path.is_file() {
+            if let Ok(content) = fs::read_to_string(&path) {
+                return Some((content, path));
+            }
         }
     }
+
     None
 }
-
 fn get_data_dir_from_config() -> String {
     if let Some((content, config_path)) = get_server_config_content() {
         for line in content.lines() {
